@@ -1,0 +1,7 @@
+/.build_debug/
+/.build_release/
+/.cache/
+/.compile_commands/
+/compile_commands.json
+cppcheck-output
+profile
