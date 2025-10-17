@@ -1,5 +1,7 @@
 # Easy Profile library
 
+> WIP: This library is under development. The API and features may change in future releases.
+
 The `Profile` class encapsulates the configuration and state for a user or application profile. It manages profile-specific settings, such as name, parameters, and other customizable options.
 
 ## Example usage
