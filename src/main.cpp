@@ -3,59 +3,109 @@
 #include <print>
 
 // -----------------------------------------------------------------------------
+// Application Profile Values
+// -----------------------------------------------------------------------------
 
-enum class BOOL
+enum class Value
 {
-    ValueOne,
-    ValueTwo,
+    BoolOne,
+    BoolTwo,
+
+    U32One,
+    U32Two,
 
     Count,
 };
 
-using ContainerBool = profile::EnumArray<BOOL, bool, static_cast<size_t>(BOOL::Count)>;
+// -----------------------------------------------------------------------------
+// Default Profile Values
+// -----------------------------------------------------------------------------
 
-enum class U32
-{
-    ValueOne,
-    ValueTwo,
-
-    Count,
+const std::array<profile::EnumType, static_cast<size_t>(Value::Count)> defaultValues = {
+    profile::EnumType{ "boolOne", true },
+    profile::EnumType{ "boolTwo", false },
+    profile::EnumType{ "u32One", 123u },
+    profile::EnumType{ "u32Two", 456u },
 };
 
-using ContainerU32 = profile::EnumArray<U32, uint32_t, static_cast<size_t>(U32::Count)>;
+// -----------------------------------------------------------------------------
+// Small Utility
+// -----------------------------------------------------------------------------
+
+void DumpValue(const char* title, Value e, const std::any& value)
+{
+    if (value.has_value() == false)
+    {
+        std::println("{}: No Value {}", title, static_cast<int>(e));
+        return;
+    }
+
+    switch (e)
+    {
+    case Value::BoolOne:
+    case Value::BoolTwo:
+        std::println("{}Value {} = {}", title, static_cast<int>(e), std::any_cast<bool>(value));
+        break;
+
+    case Value::U32One:
+    case Value::U32Two:
+        std::println("{}Value {} = {}", title, static_cast<int>(e), std::any_cast<uint32_t>(value));
+        break;
+
+    case Value::Count:
+        break;
+    }
+}
+
+class Section final
+{
+public:
+    Section(const char* title)
+    {
+        std::println("* {}", title);
+    }
+
+    ~Section()
+    {
+        std::println();
+    }
+};
 
 // -----------------------------------------------------------------------------
 // Application Profile
 // -----------------------------------------------------------------------------
 
-ContainerBool defaultBool{ { true, false } };
-ContainerU32 defaultU32{ { 123u, 456u } };
-
-class MyProfile : public profile::Profile<ContainerBool, ContainerU32>
+class MyProfile : public profile::Profile<Value, static_cast<size_t>(Value::Count)>
 {
 public:
     MyProfile()
-        : profile::Profile<ContainerBool, ContainerU32>(defaultBool, defaultU32)
+        : profile::Profile<Value, static_cast<size_t>(Value::Count)>(defaultValues)
     {
+    }
+
+    void read()
+    {
+        // Simulate reading from storage.
+
+        // Notify listeners about updated values.
+        Section section("Reading Data and Notifying Listeners");
+        notifyAll();
+    }
+
+    void writ()
+    {
+        // Simulate writing to storage.
+        Section section("Simulated Profile Write");
     }
 
     void dump(const char* title) const
     {
-        std::println("=== {} ===", title);
+        Section section(title);
 
-        for (size_t i = 0; i < static_cast<size_t>(BOOL::Count); i++)
+        for (size_t i = 0; i < static_cast<size_t>(Value::Count); i++)
         {
-            auto value = get(static_cast<BOOL>(i));
-            std::println("BOOL[{}] = {}", i, value);
+            DumpValue("", static_cast<Value>(i), get(static_cast<Value>(i)));
         }
-
-        for (size_t i = 0; i < static_cast<size_t>(U32::Count); i++)
-        {
-            auto value = get(static_cast<U32>(i));
-            std::println("U32[{}] = {}", i, value);
-        }
-
-        std::println();
     }
 };
 
@@ -63,43 +113,35 @@ public:
 // Application Listeners
 // -----------------------------------------------------------------------------
 
-class Listener1 final : public profile::Listener<Listener1>
+class Listener1 final : public profile::Listener<Value, static_cast<size_t>(Value::Count)>
 {
 public:
-    Listener1(profile::ProfileInternal* profile)
-        : profile::Listener<Listener1>(profile, "Listener1")
+    Listener1(profile::Profile<Value, static_cast<size_t>(Value::Count)>* profile)
+        : profile::Listener<Value, static_cast<size_t>(Value::Count)>(profile, "Listener1")
     {
     }
 
-    void notifyImpl(BOOL e, bool& value)
+    void onProfile(Value e, const std::any& value) const override
     {
-        std::println("Listener1: BOOL[{}] changed to {}", static_cast<size_t>(e), value);
-    }
-
-    void notifyImpl(U32 e, uint32_t& value)
-    {
-        std::println("Listener1: U32[{}] changed to {}", static_cast<size_t>(e), value);
+        DumpValue("onProfile on Listener1", e, value);
     }
 };
 
-class Listener2 final : public profile::Listener<Listener2>
+class Listener2 final : public profile::Listener<Value, static_cast<size_t>(Value::Count)>
 {
 public:
-    Listener2(profile::ProfileInternal* profile)
-        : profile::Listener<Listener2>(profile, "Listener2")
+    Listener2(profile::Profile<Value, static_cast<size_t>(Value::Count)>* profile)
+        : profile::Listener<Value, static_cast<size_t>(Value::Count)>(profile, "Listener2")
     {
     }
 
-    void notifyImpl(BOOL e, bool& value)
+    void onProfile(Value e, const std::any& value) const override
     {
-        std::println("Listener2: BOOL[{}] changed to {}", static_cast<size_t>(e), value);
-    }
-
-    void notifyImpl(U32 e, uint32_t& value)
-    {
-        std::println("Listener2: U32[{}] changed to {}", static_cast<size_t>(e), value);
+        DumpValue("onProfile on Listener1", e, value);
     }
 };
+
+// -----------------------------------------------------------------------------
 
 int main()
 {
@@ -108,12 +150,19 @@ int main()
     Listener1 listener1(&profile);
     Listener2 listener2(&profile);
 
-    profile.dump("default values");
+    std::println();
 
-    profile.set(BOOL::ValueOne, false);
-    profile.set(U32::ValueTwo, 789u);
+    profile.read();
 
-    profile.dump("updated values");
+    profile.dump("Dump Default Values");
+
+    {
+        Section section("Updating Profile Values");
+        profile.set(Value::BoolOne, false);
+        profile.set(Value::U32Two, 789u);
+    }
+
+    profile.dump("Dump Updated Values");
 
     return 0;
 }

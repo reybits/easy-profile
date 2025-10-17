@@ -8,64 +8,52 @@
 
 #pragma once
 
-#include <tuple>
+#include <any>
+#include <array>
+#include <cassert>
+#include <print>
 #include <vector>
+
+#define ASSERT(x) assert(x)
 
 namespace profile
 {
-    class Storage;
-
-    template <typename Enum, typename T, size_t N>
-    struct EnumArray
+    struct EnumType
     {
-        using EnumType = Enum;
-        using ValueType = T;
-
-        std::array<T, N> values;
-
-        T& operator[](Enum e)
+        EnumType(const char* n, const std::any& def)
+            : name(n)
+            , defaultValue(def)
+            , value(def)
         {
-            return values[static_cast<size_t>(e)];
         }
 
-        const T& operator[](Enum e) const
-        {
-            return values[static_cast<size_t>(e)];
-        }
+        const char* name;
+        const std::any defaultValue;
+        std::any value;
     };
 
     // -------------------------------------------------------------------------
 
-    class ListenerInternal;
-
-    class ProfileInternal
-    {
-    public:
-        virtual ~ProfileInternal() = default;
-
-    public:
-        void subscribe(ListenerInternal* listener);
-        void unsubscribe(ListenerInternal* listener);
-
-    protected:
-        ProfileInternal() = default;
-
-    protected:
-        std::vector<ListenerInternal*> m_listeners;
-    };
+    template <typename Enum, size_t N>
+    class Profile;
 
     // -------------------------------------------------------------------------
 
-    class ListenerInternal
+    template <typename Enum, size_t N>
+    class Listener
     {
     public:
-        virtual ~ListenerInternal()
+        virtual ~Listener()
         {
             m_profile->unsubscribe(this);
         }
 
+        virtual void onProfile(Enum e, const std::any& value) const = 0;
+
     public:
-        ProfileInternal* getProfie() const
+        using ProfileType = Profile<Enum, N>;
+
+        ProfileType* getProfie() const
         {
             return m_profile;
         }
@@ -76,7 +64,7 @@ namespace profile
         }
 
     protected:
-        ListenerInternal(ProfileInternal* profile, const char* name)
+        Listener(ProfileType* profile, const char* name)
             : m_profile(profile)
             , m_name(name)
         {
@@ -84,128 +72,88 @@ namespace profile
         }
 
     private:
-        ProfileInternal* m_profile;
+        ProfileType* m_profile;
         const char* m_name;
     };
 
     // -------------------------------------------------------------------------
 
-    template <typename Derived>
-    class Listener : public ListenerInternal
+    template <typename Enum, size_t N>
+    class Profile
     {
     public:
-        template <typename Enum, typename T>
-        void onProfile(Enum e, const T& value)
-        {
-            static_cast<Derived*>(this)->notifyImpl(e, value);
-        }
+        using ListenerType = profile::Listener<Enum, N>;
+        using Container = std::array<EnumType, N>;
 
-    protected:
-        Listener(ProfileInternal* profile, const char* name)
-            : ListenerInternal(profile, name)
-        {
-        }
-    };
-
-    // -------------------------------------------------------------------------
-
-    template <typename... Containers>
-    class Profile : public ProfileInternal
-    {
-    public:
-        explicit Profile(Containers... cs)
-            : m_containers(cs...)
+        Profile(const Container& container)
+            : m_container(container)
         {
         }
 
         virtual ~Profile() = default;
 
     public:
-        template <typename Enum>
-        decltype(auto) get(Enum e) const
+        void subscribe(ListenerType* listener)
         {
-            return std::apply(
-                [&](auto&&... cs) -> decltype(auto) { return getFromTuple(e, cs...); },
-                m_containers);
+#if defined(DEBUG)
+            auto it = std::find_if(m_listeners.begin(), m_listeners.end(), [listener](ListenerType* l) {
+                return listener == l;
+            });
+            ASSERT(it == m_listeners.end());
+#endif
+
+            m_listeners.push_back(listener);
+            std::println("Profile Listener '{}' added, total: {}.", listener->getName(), m_listeners.size());
         }
 
-        template <typename Enum, typename Value>
-        void set(Enum e, Value&& v)
+        void unsubscribe(ListenerType* listener)
         {
-            std::apply(
-                [&](auto&&... cs) { (setToTuple(e, std::forward<Value>(v), cs), ...); },
-                m_containers);
+            auto it = std::find_if(m_listeners.begin(), m_listeners.end(), [listener](ListenerType* l) {
+                return listener == l;
+            });
+
+            if (it != m_listeners.end())
+            {
+                m_listeners.erase(it);
+                std::println("Profile Listener '{}' removed, remain: {}.", listener->getName(), m_listeners.size());
+            }
         }
 
-        template <typename Enum>
-        void updateContainer() const
+    public:
+        const std::any& get(Enum e) const
+        {
+            return m_container[static_cast<size_t>(e)].value;
+        }
+
+        void set(Enum e, const std::any& v)
+        {
+            m_container[static_cast<size_t>(e)].value = v;
+            notify(e, v);
+        }
+
+    protected:
+        void notifyAll() const
         {
             for (size_t i = 0; i < static_cast<size_t>(Enum::Count); i++)
             {
                 auto type = static_cast<Enum>(i);
-                auto value = get(type);
+                auto& value = get(type);
                 notify(type, value);
             }
         }
 
     private:
-        template <typename Enum, typename T>
-        void notify(Enum e, const T& value) const
+        void notify(Enum e, const std::any& value) const
         {
             for (auto l : m_listeners)
             {
-                // l->onProfile(e, value);
+                l->onProfile(e, value);
             }
         }
-
-        template <typename Enum, typename C, typename... Rest>
-        decltype(auto) getFromTuple(Enum e, const C& c, const Rest&... rest) const
-        {
-            if constexpr (std::is_same_v<typename C::EnumType, Enum>)
-            {
-                return c[e];
-            }
-            else
-            {
-                return getFromTuple(e, rest...);
-            }
-        }
-
-        template <typename Enum, typename Value, typename C>
-        void setToTuple(Enum e, Value&& v, C& c)
-        {
-            if constexpr (std::is_same_v<typename C::EnumType, Enum>)
-            {
-                if (c[e] != v)
-                {
-                    c[e] = std::forward<Value>(v);
-                    notify(e, v);
-                }
-            }
-        }
-
-        template <typename Enum, typename Value, typename C, typename... Rest>
-        void setToTuple(Enum e, Value&& v, C& c, Rest&... rest)
-        {
-            if constexpr (std::is_same_v<typename C::EnumType, Enum>)
-            {
-                if (c[e] != v)
-                {
-                    c[e] = std::forward<Value>(v);
-                    notify(e, v);
-                }
-            }
-            else
-            {
-                setToTuple(e, std::forward<Value>(v), rest...);
-            }
-        }
-
-    protected:
-        Profile() = default;
 
     private:
-        std::tuple<Containers...> m_containers;
+        std::vector<ListenerType*> m_listeners;
+        Container m_container;
     };
 
 } // namespace profile
