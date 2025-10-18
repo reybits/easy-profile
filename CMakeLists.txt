@@ -34,7 +34,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_SOURCE_DIR}/
+    ${PROJECT_SOURCE_DIR}
     )
 
 # link_directories(

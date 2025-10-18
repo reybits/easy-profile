@@ -16,7 +16,7 @@
 
 #define ASSERT(x) assert(x)
 
-namespace profile
+namespace profile_any
 {
     struct EnumType
     {
@@ -82,7 +82,7 @@ namespace profile
     class Profile
     {
     public:
-        using ListenerType = profile::Listener<Enum, N>;
+        using ListenerType = Listener<Enum, N>;
         using Container = std::array<EnumType, N>;
 
         Profile(const Container& container)
@@ -156,4 +156,4 @@ namespace profile
         Container m_container;
     };
 
-} // namespace profile
+} // namespace profile_any
