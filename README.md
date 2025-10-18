@@ -9,44 +9,36 @@ The `Profile` class encapsulates the configuration and state for a user or appli
 Define your enums.
 
 ```cpp
-enum class BOOL
+enum class Value
 {
-    ValueOne,
-    ValueTwo,
+    BoolOne,
+    BoolTwo,
 
-    Count,
-};
-
-enum class U32
-{
-    ValueOne,
-    ValueTwo,
+    U32One,
+    U32Two,
 
     Count,
 };
 ```
 
-And define containers for them.
+And define default values and names for them.
 
 ```cpp
-using ContainerBool = profile::EnumArray<BOOL, bool, static_cast<size_t>(BOOL::Count)>;
-using ContainerU32 = profile::EnumArray<U32, uint32_t, static_cast<size_t>(U32::Count)>;
-```
-
-Default values.
-
-```cpp
-ContainerBool defaultBool{ { true, false } };
-ContainerU32 defaultU32{ { 123u, 456u } };
+const std::array<profile::EnumType, static_cast<size_t>(Value::Count)> defaultValues = {
+    profile::EnumType{ "boolOne", true },
+    profile::EnumType{ "boolTwo", false },
+    profile::EnumType{ "u32One", 123u },
+    profile::EnumType{ "u32Two", 456u },
+};
 ```
 
 Define your profile by inheriting from profile::Profile.
 
 ```cpp
-class MyProfile : public profile::Profile<ContainerBool, ContainerU32>
+class MyProfile : public profile::Profile<Value, static_cast<size_t>(Value::Count)>
 {
     MyProfile()
-        : profile::Profile<ContainerBool, ContainerU32>(defaultBool, defaultU32)
+        : profile::Profile<Value, static_cast<size_t>(Value::Count)>(defaultValues)
     {
     }
 };
@@ -55,22 +47,31 @@ class MyProfile : public profile::Profile<ContainerBool, ContainerU32>
 Define a listener by inheriting from profile::Listener.
 
 ```cpp
-class MyListener final : public profile::Listener<MyListener>
+class MyListener final : public profile::Listener<Value, static_cast<size_t>(Value::Count)>
 {
 public:
-    MyListener(profile::ProfileInternal* profile)
-        : profile::Listener<MyListener>(profile, "MyListener")
+    MyListener(profile::Profile<Value, static_cast<size_t>(Value::Count)>* profile)
+        : profile::Listener<Value, static_cast<size_t>(Value::Count)>(profile, "Listener1")
     {
     }
 
-    void notifyImpl(BOOL e, const bool& value)
+    void onProfile(Value e, const std::any& value) const override
     {
-        std::println("MyListener: BOOL[{}] changed to {}", static_cast<size_t>(e), value);
-    }
+        switch (e)
+        {
+        case Value::BoolOne:
+        case Value::BoolTwo:
+            std::println("{}Value {} = {}", title, static_cast<int>(e), std::any_cast<bool>(value));
+            break;
 
-    void notifyImpl(U32 e, const uint32_t& value)
-    {
-        std::println("MyListener: U32[{}] changed to {}", static_cast<size_t>(e), value);
+        case Value::U32One:
+        case Value::U32Two:
+            std::println("{}Value {} = {}", title, static_cast<int>(e), std::any_cast<uint32_t>(value));
+            break;
+
+        case Value::Count:
+            break;
+        }
     }
 };
 ```
@@ -87,10 +88,11 @@ void InitilizeProfile()
     MyListener myListener(&myProfile);
 
     // Change some values in the profile.
-    myProfile.set(BOOL::ValueOne, false); // This will trigger MyListener's notifyImpl for BOOL.
-    myProfile.set(U32::ValueTwo, 789u);   // This will trigger MyListener's notifyImpl for U32.
+    // This will trigger MyListener's onProfile(Value e, const std::any& value).
+    myProfile.set(Value::BoolOne, false);
+    myProfile.set(Value::U32Two, 789u);
 
-    std::println("BOOL ValueOne: {}", myProfile.get(BOOL::ValueOne));
-    std::println("U32 ValueTwo: {}", myProfile.get(U32::ValueTwo));
+    std::println("BoolOne: {}", std::any_cast<bool>(myProfile.get(Value::BoolOne)));
+    std::println("U32Two: {}", std::any_cast<bool>(myProfile.get(Value::U32Two)));
 }
 ```
