@@ -8,15 +8,67 @@ namespace strong
     // Default Profile Values
     // -------------------------------------------------------------------------
 
-    ContainerBool defaultBool{ { true, false } };
-    ContainerU32 defaultU32{ { 123u, 456u } };
+    ContainerBool defaultBool = {
+        { ContainerBool::Entry{ "boolOne", true },
+          ContainerBool::Entry{ "boolOne", false } }
+    };
+
+    ContainerU32 defaultU32{
+        { ContainerU32::Entry{ "u32One", 123u },
+          ContainerU32::Entry{ "u32Two", 456u } }
+    };
+
+    ContainerStr defaultStr{
+        { ContainerStr::Entry{ "StrOne", std::string{ "StrOne" } },
+          ContainerStr::Entry{ "StrTwo", std::string{ "StrTwo" } } }
+    };
+
+    // -------------------------------------------------------------------------
+    // Small Utility
+    // -------------------------------------------------------------------------
+
+    template <typename Enum, typename T>
+    void DumpValue(const char* title, Enum, const T& value)
+    {
+        if constexpr (std::is_same_v<Enum, BOOL> && std::is_same_v<T, bool>)
+        {
+            ::printf("BOOL[%s] = %s\n", title, value ? "true" : "false");
+        }
+        else if constexpr (std::is_same_v<Enum, U32> && std::is_same_v<T, uint32_t>)
+        {
+            ::printf("U32[%s] = %u\n", title, value);
+        }
+        else if constexpr (std::is_same_v<Enum, STR> && std::is_same_v<T, std::string>)
+        {
+            ::printf("STR[%s] = %s\n", title, value.c_str());
+        }
+        else
+        {
+            ::printf("[%s] = unknown.\n", title);
+        }
+    }
+
+    template <typename Enum>
+    void DumpValue(Enum type, const MyProfile& profile)
+    {
+        DumpValue(profile.getName(type), type, profile.get(type));
+    }
+
+    template <typename Enum>
+    std::string ToTitle(MyProfile::Listener::ProfileType* profile, const char* name, Enum e)
+    {
+        std::string title = name;
+        title += ": ";
+        title += profile->getName(e);
+        return title;
+    }
 
     // -------------------------------------------------------------------------
     // Application Profile
     // -------------------------------------------------------------------------
 
     MyProfile::MyProfile()
-        : profile_strong::Profile<ContainerBool, ContainerU32>(defaultBool, defaultU32)
+        : BaseProfile(defaultBool, defaultU32, defaultStr)
     {
     }
 
@@ -28,6 +80,7 @@ namespace strong
         Section section("* Reading Data and Notifying Listeners");
         notifyAll<BOOL>();
         notifyAll<U32>();
+        notifyAll<STR>();
     }
 
     void MyProfile::dump(const char* title) const
@@ -37,13 +90,22 @@ namespace strong
         for (size_t i = 0; i < static_cast<size_t>(BOOL::Count); i++)
         {
             auto value = get(static_cast<BOOL>(i));
-            std::println("BOOL[{}] = {}", i, value);
+            auto name = getName(static_cast<BOOL>(i));
+            ::printf("BOOL[%s] = %s\n", name, value ? "true" : "false");
         }
 
         for (size_t i = 0; i < static_cast<size_t>(U32::Count); i++)
         {
             auto value = get(static_cast<U32>(i));
-            std::println("U32[{}] = {}", i, value);
+            auto name = getName(static_cast<U32>(i));
+            ::printf("U32[%s] = %u\n", name, value);
+        }
+
+        for (size_t i = 0; i < static_cast<size_t>(STR::Count); i++)
+        {
+            auto value = get(static_cast<STR>(i));
+            auto name = getName(static_cast<STR>(i));
+            ::printf("STR[%s] = %s\n", name, value.c_str());
         }
     }
 
@@ -51,34 +113,50 @@ namespace strong
     // Application Listeners
     // -------------------------------------------------------------------------
 
-    Listener1::Listener1(profile_strong::ProfileInternal* profile)
-        : profile_strong::Listener<Listener1>(profile, "Listener1")
+    Listener1::Listener1(MyProfile* profile)
+        : MyProfile::Listener(profile, "Listener1")
     {
     }
 
     void Listener1::onProfile(BOOL e, bool& value)
     {
-        std::println("Listener1: BOOL[{}] changed to {}", static_cast<size_t>(e), value);
+        auto title = ToTitle(getProfile(), getName(), e);
+        ::printf("%s = %s\n", title.c_str(), value ? "true" : "false");
     }
 
     void Listener1::onProfile(U32 e, uint32_t& value)
     {
-        std::println("Listener1: U32[{}] changed to {}", static_cast<size_t>(e), value);
+        auto title = ToTitle(getProfile(), getName(), e);
+        ::printf("%s = %u\n", title.c_str(), value);
     }
 
-    Listener2::Listener2(profile_strong::ProfileInternal* profile)
-        : profile_strong::Listener<Listener2>(profile, "Listener2")
+    void Listener1::onProfile(STR e, const std::string& value)
+    {
+        auto title = ToTitle(getProfile(), getName(), e);
+        ::printf("%s = %s\n", title.c_str(), value.c_str());
+    }
+
+    Listener2::Listener2(MyProfile* profile)
+        : MyProfile::Listener(profile, "Listener2")
     {
     }
 
     void Listener2::onProfile(BOOL e, bool& value)
     {
-        std::println("Listener2: BOOL[{}] changed to {}", static_cast<size_t>(e), value);
+        auto title = ToTitle(getProfile(), getName(), e);
+        ::printf("%s = %s\n", title.c_str(), value ? "true" : "false");
     }
 
     void Listener2::onProfile(U32 e, uint32_t& value)
     {
-        std::println("Listener2: U32[{}] changed to {}", static_cast<size_t>(e), value);
+        auto title = ToTitle(getProfile(), getName(), e);
+        ::printf("%s = %u\n", title.c_str(), value);
+    }
+
+    void Listener2::onProfile(STR e, const std::string& value)
+    {
+        auto title = ToTitle(getProfile(), getName(), e);
+        ::printf("%s = %s\n", title.c_str(), value.c_str());
     }
 
     // -------------------------------------------------------------------------
@@ -88,7 +166,7 @@ namespace strong
     void test()
     {
         Section section("====================================\n"
-                        "=      Strong Profile Example      =\n"
+                        "=        Strong Profile Test       =\n"
                         "====================================\n");
 
         MyProfile profile;
@@ -96,7 +174,7 @@ namespace strong
         Listener1 listener1(&profile);
         Listener2 listener2(&profile);
 
-        std::println();
+        ::printf("\n");
 
         profile.read();
 
@@ -106,6 +184,14 @@ namespace strong
             Section section("* Update Profile Values");
             profile.set(BOOL::ValueOne, false);
             profile.set(U32::ValueTwo, 789u);
+            profile.set(STR::ValueOne, std::string{ "NewStringOne" });
+        }
+
+        {
+            Section section("* Read Profile Values");
+            DumpValue(BOOL::ValueOne, profile);
+            DumpValue(U32::ValueTwo, profile);
+            DumpValue(STR::ValueOne, profile);
         }
 
         profile.dump("* Updated Values");

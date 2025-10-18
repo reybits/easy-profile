@@ -27,26 +27,27 @@ enum class Value
 And define default values and names for them.
 
 ```cpp
+#include <array>
+#include <cassert>
+#include <variant>
+#include <vector>
+
+using BaseProfile = profile_variant::Profile<Value, static_cast<size_t>(Value::Count), bool, uint32_t, std::string>;
+
 const MyProfile::Container defaultValues = { {
     { "boolOne", true },
     { "boolTwo", false },
     { "u32One", 123u },
     { "u32Two", 456u },
-    { "strOne", std::string{ "strOne" } },
-    { "strTwo", std::string{ "strTwo" } },
+    { "strOne", std::string{ "StringOne" } },
+    { "strTwo", std::string{ "StringTwo" } },
 } };
+
 ```
 
 Define your profile by inheriting from profile::Profile.
 
 ```cpp
-#include <any>
-#include <array>
-#include <cassert>
-#include <vector>
-
-using BaseProfile = profile::Profile<Value, static_cast<size_t>(Value::Count)>;
-
 class MyProfile : public BaseProfile
 {
     MyProfile()
@@ -59,31 +60,31 @@ class MyProfile : public BaseProfile
 Define a listener by inheriting from profile::Listener.
 
 ```cpp
-class Listener1 final : public MyProfile::Listener
+class MyListener : public MyProfile::Listener
 {
 public:
-    MyListener(MyProfile* profile)
-        : MyProfile::Listener(profile, "MyListener")
+    MyListener::MyListener(MyProfile* profile)
+        : MyProfile::Listener(profile, "Listener1")
     {
     }
 
-    void onProfile(Value e, const MyProfile::Any& value) override
+    void onProfile(Value e, const std::any& value) override
     {
         switch (e)
         {
         case Value::BoolOne:
         case Value::BoolTwo:
-            ::printf("%s: Value %d = %d\n", title, static_cast<int>(e), std::any_cast<bool>(value));
+            ::printf("Value %d = %d\n", static_cast<int>(e), std::get<bool>(value));
             break;
 
         case Value::U32One:
         case Value::U32Two:
-            ::printf("%s: Value %d = %u\n", title, static_cast<int>(e), std::any_cast<uint32_t>(value));
+            ::printf("Value %d = %u\n", static_cast<int>(e), std::get<uint32_t>(value));
             break;
 
         case Value::StrOne:
         case Value::StrTwo:
-            ::printf("%s: Value %d = %s\n", title, static_cast<int>(e), std::any_cast<std::string>(value).c_str());
+            ::printf("Value %d = %s\n", static_cast<int>(e), std::get<std::string>(value).c_str());
             break;
 
         case Value::Count:

@@ -28,19 +28,24 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
 # additional compiler flags
 set(CMAKE_COLOR_MAKEFILE ON)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}
-    )
+)
 
 # link_directories(
 # )
 
-file( GLOB_RECURSE SOURCES "src/*.cpp" "strong/*.cpp" "any/*.cpp" )
+file( GLOB_RECURSE SOURCES
+    "src/*.cpp"
+    "any/*.cpp"
+    "strong/*.cpp"
+    "variant/*.cpp"
+)
 
 # link_libraries (
 # )
@@ -48,5 +53,5 @@ file( GLOB_RECURSE SOURCES "src/*.cpp" "strong/*.cpp" "any/*.cpp" )
 add_executable(
     ${APPLICATION_NAME}
     ${SOURCES}
-    )
+)
 

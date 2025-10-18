@@ -1,17 +1,13 @@
 #pragma once
 
-#include <any>
 #include <array>
 #include <cassert>
+#include <variant>
 #include <vector>
 
-namespace any
+namespace variant
 {
-#include "any/include/Profile.h"
-
-    // -------------------------------------------------------------------------
-    // Application Profile Values
-    // -------------------------------------------------------------------------
+#include "variant/include/Profile.h"
 
     enum class Value
     {
@@ -31,7 +27,7 @@ namespace any
     // Application Profile
     // -------------------------------------------------------------------------
 
-    using BaseProfile = profile::Profile<Value, static_cast<size_t>(Value::Count)>;
+    using BaseProfile = profile::Profile<Value, static_cast<size_t>(Value::Count), bool, uint32_t, std::string>;
 
     class MyProfile : public BaseProfile
     {
@@ -46,7 +42,7 @@ namespace any
     // Application Listeners
     // -------------------------------------------------------------------------
 
-    class Listener1 final : public MyProfile::Listener
+    class Listener1 : public MyProfile::Listener
     {
     public:
         Listener1(MyProfile* profile);
@@ -54,7 +50,7 @@ namespace any
         void onProfile(Value e, const MyProfile::Type& value) override;
     };
 
-    class Listener2 final : public MyProfile::Listener
+    class Listener2 : public MyProfile::Listener
     {
     public:
         Listener2(MyProfile* profile);
@@ -68,4 +64,4 @@ namespace any
 
     void test();
 
-} // namespace any
+} // namespace variant

@@ -1,10 +1,10 @@
-#include "any.h"
+#include "variant.h"
 
 #include "helpers.h"
 
 #include <string>
 
-namespace any
+namespace variant
 {
     // -------------------------------------------------------------------------
     // Default Profile Values
@@ -15,8 +15,8 @@ namespace any
         { "boolTwo", false },
         { "u32One", 123u },
         { "u32Two", 456u },
-        { "strOne", std::string{ "strOne" } },
-        { "strTwo", std::string{ "strTwo" } },
+        { "strOne", std::string{ "StringOne" } },
+        { "strTwo", std::string{ "StringTwo" } },
     } };
 
     // -------------------------------------------------------------------------
@@ -25,27 +25,21 @@ namespace any
 
     void DumpValue(const char* title, Value e, const MyProfile::Type& value)
     {
-        if (value.has_value() == false)
-        {
-            ::printf("%s: No Value.\n", title);
-            return;
-        }
-
         switch (e)
         {
         case Value::BoolOne:
         case Value::BoolTwo:
-            ::printf("%s = %s\n", title, ToString(std::any_cast<bool>(value)));
+            ::printf("%s = %s\n", title, ToString(std::get<bool>(value)));
             break;
 
         case Value::U32One:
         case Value::U32Two:
-            ::printf("%s = %u\n", title, std::any_cast<uint32_t>(value));
+            ::printf("%s = %u\n", title, std::get<uint32_t>(value));
             break;
 
         case Value::StrOne:
         case Value::StrTwo:
-            ::printf("%s = %s\n", title, std::any_cast<std::string>(value).c_str());
+            ::printf("%s = %s\n", title, std::get<std::string>(value).c_str());
             break;
 
         case Value::Count:
@@ -84,11 +78,13 @@ namespace any
         {
             auto e = static_cast<Value>(i);
             DumpValue(getName(e), e, get(static_cast<Value>(i)));
+            // std::visit([i](auto&& v) {
+            //     ::printf("Changed %zu: %u\n", i, v);
+            // },
+            //            e);
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Application Listeners
     // -------------------------------------------------------------------------
 
     Listener1::Listener1(MyProfile* profile)
@@ -103,6 +99,10 @@ namespace any
         title += ": ";
         title += profile->getName(e);
         DumpValue(title.c_str(), e, value);
+        // std::visit([e, this](auto&& v) {
+        //     ::printf("onProfile on %s: Value %d = %u\n", getName(), static_cast<int>(e), v);
+        // },
+        //            value);
     }
 
     Listener2::Listener2(MyProfile* profile)
@@ -117,16 +117,18 @@ namespace any
         title += ": ";
         title += profile->getName(e);
         DumpValue(title.c_str(), e, value);
+        // std::visit([e, this](auto&& v) {
+        //     ::printf("onProfile on %s: Value %d = %u\n", getName(), static_cast<int>(e), v);
+        // },
+        //            value);
     }
 
-    // -------------------------------------------------------------------------
-    // Application Entry Point
     // -------------------------------------------------------------------------
 
     void test()
     {
         Section section("====================================\n"
-                        "=         Any Profile Test         =\n"
+                        "=       Variant Profile Test       =\n"
                         "====================================\n");
 
         MyProfile profile;
@@ -157,4 +159,4 @@ namespace any
         profile.dump("* Updated Values");
     }
 
-} // namespace any
+} // namespace variant

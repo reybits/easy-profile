@@ -10,9 +10,10 @@
 
 namespace profile
 {
+    template <typename... Ts>
     struct Entry
     {
-        using Type = std::any;
+        using Type = std::variant<Ts...>;
 
         Entry(const char* n, const Type& def)
             : name(n)
@@ -24,16 +25,21 @@ namespace profile
         const char* name;
         const Type defaultValue;
         Type value;
+
+        bool operator!=(const Entry& other) const noexcept
+        {
+            return value != other.value;
+        }
     };
 
     // -------------------------------------------------------------------------
 
-    template <typename Enum, size_t N>
+    template <typename Enum, size_t N, typename... Ts>
     class Profile
     {
     public:
-        using Type = std::any;
-        using EntryType = Entry;
+        using Type = std::variant<Ts...>;
+        using EntryType = Entry<Ts...>;
         using Container = std::array<EntryType, N>;
 
         class Listener
@@ -47,7 +53,7 @@ namespace profile
             virtual void onProfile(Enum e, const Type& value) = 0;
 
         public:
-            using ProfileType = Profile<Enum, N>;
+            using ProfileType = Profile<Enum, N, Ts...>;
 
             ProfileType* getProfile() const
             {
@@ -87,7 +93,6 @@ namespace profile
             auto it = std::find(m_listeners.begin(), m_listeners.end(), listener);
             assert(it == m_listeners.end());
 #endif
-
             m_listeners.push_back(listener);
             ::printf("Profile Listener '%s' added, total: %zu.\n", listener->getName(), m_listeners.size());
         }
@@ -98,7 +103,7 @@ namespace profile
             if (it != m_listeners.end())
             {
                 m_listeners.erase(it);
-                ::printf("Profile Listener '%s' removed, total: %zu.\n", listener->getName(), m_listeners.size());
+                ::printf("Profile Listener '%s' removed, remain: %zu.\n", listener->getName(), m_listeners.size());
             }
         }
 
@@ -108,7 +113,7 @@ namespace profile
         {
             const auto& v = m_container[static_cast<size_t>(e)].value;
             assert(std::holds_alternative<T>(v));
-            return std::any_cast<const T&>(v);
+            return std::get<T>(v);
         }
 
         const Type& get(Enum e) const
@@ -125,11 +130,24 @@ namespace profile
 
         // ---------------------------------------------------------------------
 
-        void set(Enum e, const Type& v)
+        template <typename T>
+        void set(Enum e, T&& v)
         {
-            m_container[static_cast<size_t>(e)].value = v;
-            notify(e, v);
+            auto& entry = m_container[static_cast<size_t>(e)];
+            if (!std::holds_alternative<T>(entry.value))
+            {
+                ::printf("Type mismatch for enum %d.\n", static_cast<int>(e));
+                return;
+            }
+
+            if (std::get<T>(entry.value) != v)
+            {
+                entry.value = std::forward<T>(v);
+                notify(e, entry.value);
+            }
         }
+
+        // ---------------------------------------------------------------------
 
         void reset(Enum e)
         {
@@ -140,7 +158,7 @@ namespace profile
 
         void notifyAll() const
         {
-            for (size_t i = 0; i < N; i++)
+            for (size_t i = 0; i < N; ++i)
             {
                 notify(static_cast<Enum>(i), m_container[i].value);
             }
