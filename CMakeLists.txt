@@ -34,12 +34,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/
     )
 
 # link_directories(
 # )
 
-file( GLOB_RECURSE SOURCES "src/*.cpp" )
+file( GLOB_RECURSE SOURCES "src/*.cpp" "strong/*.cpp" "any/*.cpp" )
 
 # link_libraries (
 # )
