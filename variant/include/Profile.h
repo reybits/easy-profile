@@ -131,7 +131,7 @@ namespace profile
         // ---------------------------------------------------------------------
 
         template <typename T>
-        void set(Enum e, T&& v)
+        void set(Enum e, const T& v)
         {
             auto& entry = m_container[static_cast<size_t>(e)];
             if (!std::holds_alternative<T>(entry.value))
@@ -142,7 +142,7 @@ namespace profile
 
             if (std::get<T>(entry.value) != v)
             {
-                entry.value = std::forward<T>(v);
+                entry.value = v;
                 notify(e, entry.value);
             }
         }
