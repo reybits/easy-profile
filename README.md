@@ -6,5 +6,5 @@ The `Profile` class encapsulates the configuration and state for a user or appli
 
 ## Example usage
 
-Detailed documentation for both implementations can be found in the `any/` and `strong/` directories.
-Usage examples are provided in the `src/any.h` and `src/strong.h` files.
+Detailed documentation for both implementations can be found in the `variant/`, `any/`, and `strong/` directories.
+Usage examples are provided in the `src/variant.h`, `src/any.h`, and `src/strong.h` files.
