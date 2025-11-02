@@ -50,8 +50,12 @@ namespace easyprofile
                 m_profile->unsubscribe(this);
             }
 
-#define PROFILE_TYPE(Enum, Name, Type, Size) \
-    virtual void onProfile(Enum /*e*/, const Type& /*value*/) {};
+#define PROFILE_TYPE(Enum, Name, Type, Size)          \
+    virtual void onProfile(Enum e, const Type& value) \
+    {                                                 \
+        (void)e;                                      \
+        (void)value;                                  \
+    }
 
             PROFILE_TYPES
 
@@ -139,6 +143,7 @@ namespace easyprofile
 
         // ---------------------------------------------------------------------
 
+    public:
 #define PROFILE_TYPE(Enum, Name, Type, Size)                 \
     void set(Enum e, const Type& value, bool verbose = true) \
     {                                                        \
@@ -160,6 +165,7 @@ namespace easyprofile
 
         // ---------------------------------------------------------------------
 
+    public:
 #define PROFILE_TYPE(Enum, Name, Type, Size) \
     Name,
 
@@ -185,19 +191,29 @@ namespace easyprofile
             m_dirtyFlags &= ~bit(idx);
         }
 
+        void resetDirty()
+        {
+            m_dirtyFlags = 0u;
+        }
+
     private:
-        virtual void logListenerAdded(const Listener* /*listener*/, size_t /*totalListeners*/) const
+        virtual void logListenerAdded(const Listener* listener, size_t totalListeners) const
         {
             // Implement logging if needed
             // ::printf("Profile Listener '%s' added, total: %zu.\n", listener->getName(), totlalListeners);
+            (void)listener;
+            (void)totalListeners;
         }
 
-        virtual void logListenerRemoved(const Listener* /*listener*/, size_t /*totalListeners*/) const
+        virtual void logListenerRemoved(const Listener* listener, size_t totalListeners) const
         {
             // Implement logging if needed
             // ::printf("Profile Listener '%s' removed, remain: %zu.\n", listener->getName(), totalListeners);
+            (void)listener;
+            (void)totalListeners;
         }
 
+    private:
 #define PROFILE_TYPE(Enum, Name, Type, Size)     \
     void notify(Enum e, const Type& value) const \
     {                                            \
@@ -246,6 +262,7 @@ namespace easyprofile
 
 #undef PROFILE_TYPE
 
+    private:
         std::vector<Listener*> m_listeners;
     };
 
