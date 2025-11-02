@@ -51,7 +51,7 @@ namespace easyprofile
             }
 
 #define PROFILE_TYPE(Enum, Name, Type, Size) \
-    virtual void onProfile(Enum e, const Type& value) = 0;
+    virtual void onProfile(Enum /*e*/, const Type& /*value*/) {};
 
             PROFILE_TYPES
 
