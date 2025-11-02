@@ -144,6 +144,17 @@ public:
             ::printf("STR[%s] = %s\n", name, value.c_str());
         }
     }
+
+private:
+    void logListenerAdded(const Listener* listener, size_t totalListeners) const override
+    {
+        ::printf("Profile Listener '%s' added, total: %zu.\n", listener->getName(), totalListeners);
+    }
+
+    void logListenerRemoved(const Listener* listener, size_t totalListeners) const override
+    {
+        ::printf("Profile Listener '%s' removed, remain: %zu.\n", listener->getName(), totalListeners);
+    }
 };
 
 // -------------------------------------------------------------------------

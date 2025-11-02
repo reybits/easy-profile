@@ -113,7 +113,7 @@ namespace easyprofile
             ASSERT(it == m_listeners.end());
 #endif
             m_listeners.push_back(listener);
-            ::printf("Profile Listener '%s' added, total: %zu.\n", listener->getName(), m_listeners.size());
+            logListenerAdded(listener, m_listeners.size());
         }
 
         void unsubscribe(Listener* listener)
@@ -122,7 +122,7 @@ namespace easyprofile
             if (it != m_listeners.end())
             {
                 m_listeners.erase(it);
-                ::printf("Profile Listener '%s' removed, remain: %zu.\n", listener->getName(), m_listeners.size());
+                logListenerRemoved(listener, m_listeners.size());
             }
         }
 
@@ -186,6 +186,18 @@ namespace easyprofile
         }
 
     private:
+        virtual void logListenerAdded(const Listener* /*listener*/, size_t /*totalListeners*/) const
+        {
+            // Implement logging if needed
+            // ::printf("Profile Listener '%s' added, total: %zu.\n", listener->getName(), totlalListeners);
+        }
+
+        virtual void logListenerRemoved(const Listener* /*listener*/, size_t /*totalListeners*/) const
+        {
+            // Implement logging if needed
+            // ::printf("Profile Listener '%s' removed, remain: %zu.\n", listener->getName(), totalListeners);
+        }
+
 #define PROFILE_TYPE(Enum, Name, Type, Size)     \
     void notify(Enum e, const Type& value) const \
     {                                            \
