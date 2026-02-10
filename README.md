@@ -39,9 +39,9 @@ And define containers for them.
 
 ```cpp
 #define PROFILE_TYPES                                                    \
-    PROFILE_TYPE(BOOL, BOOL, uint32_t, static_cast<size_t>(BOOL::Count)) \
+    PROFILE_TYPE(BOOL, Bool, bool, static_cast<size_t>(BOOL::Count))     \
     PROFILE_TYPE(U32, U32, uint32_t, static_cast<size_t>(U32::Count))    \
-    PROFILE_TYPE(STR, STR, std::string, static_cast<size_t>(STR::Count))
+    PROFILE_TYPE(STR, Str, std::string, static_cast<size_t>(STR::Count))
 
 #include "EasyProfile.h"
 ```
@@ -65,52 +65,46 @@ const std::array<std::string, 2> defaultStr{
 };
 ```
 
-Define your profile by inheriting from profile::Profile.
+Define your profile by inheriting from easyprofile::Profile.
 
 ```cpp
-class MyProfile : public profile::Profile
+class MyProfile : public easyprofile::Profile
 {
 public:
     MyProfile()
-        : BaseProfile(defaultBool, defaultU32, defaultStr)
+        : easyprofile::Profile(defaultBool, defaultU32, defaultStr)
     {
     }
 };
 ```
 
-Define a listener by inheriting from profile::Listener.
+Define a listener by inheriting from easyprofile::Profile::Listener.
 
 ```cpp
-class MyListener final : public profile::Profile::Listener
+class MyListener final : public easyprofile::Profile::Listener
 {
 public:
-    MyListener(profile::Profile* profile)
-        : profile::Profile::Listener(profile, "MyListener")
+    MyListener(easyprofile::Profile* profile)
+        : easyprofile::Profile::Listener(profile, "MyListener")
     {
     }
 
-    void MyListener::onProfile(BOOL e, const bool& value)
+    void onProfile(BOOL e, const bool& value) override
     {
-        auto profile = getProfile();
-        std::string title = getName();
-        title += ": ";
-        std::println("{} = {}", title, value ? "true" : "false");
+        auto title = std::string(getName()) + ": ";
+        ::printf("%s = %s\n", title.c_str(), value ? "true" : "false");
     }
 
-    void MyListener::onProfile(U32 e, const uint32_t& value)
+    void onProfile(U32 e, const uint32_t& value) override
     {
-        auto profile = getProfile();
-        std::string title = getName();
-        title += ": ";
-        std::println("{} = {}", title, value);
+        auto title = std::string(getName()) + ": ";
+        ::printf("%s = %u\n", title.c_str(), value);
     }
 
-    void MyListener::onProfile(STR e, const std::string& value)
+    void onProfile(STR e, const std::string& value) override
     {
-        auto profile = getProfile();
-        std::string title = getName();
-        title += ": ";
-        std::println("{} = {}", title, value);
+        auto title = std::string(getName()) + ": ";
+        ::printf("%s = %s\n", title.c_str(), value.c_str());
     }
 };
 ```
@@ -127,9 +121,9 @@ void InitilizeProfile()
     MyListener myListener(&myProfile);
 
     // Change some values in the profile.
-    myProfile.set(BOOL::ValueOne, false); // This will trigger MyListener's notifyImpl for BOOL.
-    myProfile.set(U32::ValueTwo, 789u);   // This will trigger MyListener's notifyImpl for U32.
-    myProfile.set(STR::ValueOne, std::string{ "NewStringOne" }); // This will trigger MyListener's notifyImpl for STR.
+    myProfile.set(BOOL::ValueOne, false); // This will trigger MyListener's onProfile for BOOL.
+    myProfile.set(U32::ValueTwo, 789u);   // This will trigger MyListener's onProfile for U32.
+    myProfile.set(STR::ValueOne, std::string{ "NewStringOne" }); // This will trigger MyListener's onProfile for STR.
 
     std::println("BOOL ValueOne: {}", myProfile.get(BOOL::ValueOne));
     std::println("U32 ValueTwo: {}", myProfile.get(U32::ValueTwo));
@@ -169,9 +163,9 @@ enum class STR
 };
 
 #define PROFILE_TYPES                                                    \
-    PROFILE_TYPE(BOOL, BOOL, uint32_t, static_cast<size_t>(BOOL::Count)) \
+    PROFILE_TYPE(BOOL, Bool, bool, static_cast<size_t>(BOOL::Count))     \
     PROFILE_TYPE(U32, U32, uint32_t, static_cast<size_t>(U32::Count))    \
-    PROFILE_TYPE(STR, STR, std::string, static_cast<size_t>(STR::Count))
+    PROFILE_TYPE(STR, Str, std::string, static_cast<size_t>(STR::Count))
 
 #include "EasyProfile.h"
 ```

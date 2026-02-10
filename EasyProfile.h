@@ -27,14 +27,25 @@ enum class STR
     PROFILE_TYPE(U32, U32, uint32_t, static_cast<size_t>(U32::Count)) \
     PROFILE_TYPE(STR, STR, std::string, static_cast<size_t>(STR::Count))
 
-#include "EeasyProfile.h"
+#include "EasyProfile.h"
 ```
 \**********************************************/
 
 #pragma once
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <vector>
+
+#if defined(DEBUG) && !defined(ASSERT)
+#    include <cassert>
+#    define ASSERT(x) assert(x)
+#endif
+
 #if !defined(PROFILE_TYPES)
-#    error "PROFILE_TYPES must be defined before including EeasyProfile.h"
+#    error "PROFILE_TYPES must be defined before including EasyProfile.h"
 #endif
 
 namespace easyprofile
@@ -81,11 +92,17 @@ namespace easyprofile
             }
 
         private:
+            Listener(const Listener&) = delete;
+            Listener& operator=(const Listener&) = delete;
+
             Profile* m_profile;
             const char* m_name;
         };
 
     public:
+        Profile(const Profile&) = delete;
+        Profile& operator=(const Profile&) = delete;
+
         virtual ~Profile() = default;
 
         void init(
@@ -107,9 +124,88 @@ namespace easyprofile
             PROFILE_TYPES
 
 #undef PROFILE_TYPE
+
+            m_dirtyFlags = 0u;
         }
 
     public:
+#define PROFILE_TYPE(Enum, Name, Type, Size)              \
+    const Type& get(Enum e) const                         \
+    {                                                     \
+        return m_container##Name[static_cast<size_t>(e)]; \
+    }
+
+        PROFILE_TYPES
+
+#undef PROFILE_TYPE
+
+        // ---------------------------------------------------------------------
+
+    public:
+#define PROFILE_TYPE(Enum, Name, Type, Size)                         \
+    void set(Enum e, const Type& value, bool notifyListeners = true) \
+    {                                                                \
+        auto& v = m_container##Name[static_cast<size_t>(e)];         \
+        if (v != value)                                              \
+        {                                                            \
+            m_dirtyFlags |= bit(DirtyBitIndex::Name);                \
+            v = value;                                               \
+            if (notifyListeners)                                     \
+            {                                                        \
+                notify(e, value);                                    \
+            }                                                        \
+        }                                                            \
+    }
+
+        PROFILE_TYPES
+
+#undef PROFILE_TYPE
+
+        // ---------------------------------------------------------------------
+
+    public:
+#define PROFILE_TYPE(Enum, Name, Type, Size) \
+    Name,
+
+        enum class DirtyBitIndex : uint32_t
+        {
+            PROFILE_TYPES
+        };
+
+#undef PROFILE_TYPE
+
+        bool isDirty(DirtyBitIndex idx) const
+        {
+            return (m_dirtyFlags & bit(idx)) != 0u;
+        }
+
+        bool isDirty() const
+        {
+            return m_dirtyFlags != 0u;
+        }
+
+        uint32_t getDirty() const
+        {
+            return m_dirtyFlags;
+        }
+
+        void resetDirty(DirtyBitIndex idx)
+        {
+            m_dirtyFlags &= ~bit(idx);
+        }
+
+        void resetDirty()
+        {
+            m_dirtyFlags = 0u;
+        }
+
+    private:
+        constexpr uint32_t bit(DirtyBitIndex idx) const
+        {
+            return 1u << static_cast<uint32_t>(idx);
+        }
+
+    private:
         void subscribe(Listener* listener)
         {
 #if defined(DEBUG)
@@ -130,77 +226,11 @@ namespace easyprofile
             }
         }
 
-    public:
-#define PROFILE_TYPE(Enum, Name, Type, Size)              \
-    const Type& get(Enum e) const                         \
-    {                                                     \
-        return m_container##Name[static_cast<size_t>(e)]; \
-    }
-
-        PROFILE_TYPES
-
-#undef PROFILE_TYPE
-
-        // ---------------------------------------------------------------------
-
-    public:
-#define PROFILE_TYPE(Enum, Name, Type, Size)                 \
-    void set(Enum e, const Type& value, bool verbose = true) \
-    {                                                        \
-        auto& v = m_container##Name[static_cast<size_t>(e)]; \
-        if (v != value)                                      \
-        {                                                    \
-            m_dirtyFlags |= bit(DirtyBitIndex::Name);        \
-            v = value;                                       \
-            if (verbose)                                     \
-            {                                                \
-                notify(e, value);                            \
-            }                                                \
-        }                                                    \
-    }
-
-        PROFILE_TYPES
-
-#undef PROFILE_TYPE
-
-        // ---------------------------------------------------------------------
-
-    public:
-#define PROFILE_TYPE(Enum, Name, Type, Size) \
-    Name,
-
-        enum class DirtyBitIndex : uint32_t
-        {
-            PROFILE_TYPES
-        };
-
-#undef PROFILE_TYPE
-
-        constexpr uint32_t bit(DirtyBitIndex idx) const
-        {
-            return 1u << static_cast<uint32_t>(idx);
-        }
-
-        uint32_t getDirty() const
-        {
-            return m_dirtyFlags;
-        }
-
-        void resetDirty(DirtyBitIndex idx)
-        {
-            m_dirtyFlags &= ~bit(idx);
-        }
-
-        void resetDirty()
-        {
-            m_dirtyFlags = 0u;
-        }
-
-    private:
+    protected:
         virtual void logListenerAdded(const Listener* listener, size_t totalListeners) const
         {
             // Implement logging if needed
-            // ::printf("Profile Listener '%s' added, total: %zu.\n", listener->getName(), totlalListeners);
+            // ::printf("Profile Listener '%s' added, total: %zu.\n", listener->getName(), totalListeners);
             (void)listener;
             (void)totalListeners;
         }
@@ -217,7 +247,7 @@ namespace easyprofile
 #define PROFILE_TYPE(Enum, Name, Type, Size)     \
     void notify(Enum e, const Type& value) const \
     {                                            \
-        for (auto l : m_listeners)               \
+        for (auto* l : m_listeners)              \
         {                                        \
             l->onProfile(e, value);              \
         }                                        \
@@ -230,7 +260,7 @@ namespace easyprofile
     protected:
         explicit Profile() = default;
 
-        explicit Profile(
+        Profile(
 #define PROFILE_TYPE(Enum, Name, Type, Size) \
     const std::array<Type, Size>&def##Name,
 
