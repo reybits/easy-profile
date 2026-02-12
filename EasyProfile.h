@@ -39,9 +39,13 @@ enum class STR
 #include <cstdint>
 #include <vector>
 
-#if defined(DEBUG) && !defined(ASSERT)
-#    include <cassert>
-#    define ASSERT(x) assert(x)
+#ifndef ASSERT
+#    ifndef NDEBUG
+#        include <cassert>
+#        define ASSERT(x) assert(x)
+#    else
+#        define ASSERT(x)
+#    endif
 #endif
 
 #if !defined(PROFILE_TYPES)
