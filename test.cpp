@@ -81,6 +81,8 @@ std::string ToTitle(easyprofile::Profile* profile, const char* name, Enum e)
     std::string title = name;
     title += ": ";
     // title += profile->getName(e);
+    (void)profile;
+    (void)e;
     return title;
 }
 
@@ -169,13 +171,13 @@ public:
     {
     }
 
-    void onProfile(BOOL e, const bool& value)
+    void onProfile(BOOL e, bool value)
     {
         auto title = ToTitle(getProfile(), getName(), e);
         ::printf("%s = %s\n", title.c_str(), value ? "true" : "false");
     }
 
-    void onProfile(U32 e, const uint32_t& value)
+    void onProfile(U32 e, uint32_t value)
     {
         auto title = ToTitle(getProfile(), getName(), e);
         ::printf("%s = %u\n", title.c_str(), value);
@@ -196,13 +198,13 @@ public:
     {
     }
 
-    void onProfile(BOOL e, const bool& value)
+    void onProfile(BOOL e, bool value)
     {
         auto title = ToTitle(getProfile(), getName(), e);
         ::printf("%s = %s\n", title.c_str(), value ? "true" : "false");
     }
 
-    void onProfile(U32 e, const uint32_t& value)
+    void onProfile(U32 e, uint32_t value)
     {
         auto title = ToTitle(getProfile(), getName(), e);
         ::printf("%s = %u\n", title.c_str(), value);

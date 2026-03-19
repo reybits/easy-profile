@@ -37,6 +37,7 @@ enum class STR
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 #include <vector>
 
 #ifndef ASSERT
@@ -54,6 +55,9 @@ enum class STR
 
 namespace easyprofile
 {
+    template <typename T>
+    using ProfileParam = std::conditional_t<std::is_scalar_v<T>, T, const T&>;
+
     class Profile
     {
     public:
@@ -65,11 +69,11 @@ namespace easyprofile
                 m_profile->unsubscribe(this);
             }
 
-#define PROFILE_TYPE(Enum, Name, Type, Size)          \
-    virtual void onProfile(Enum e, const Type& value) \
-    {                                                 \
-        (void)e;                                      \
-        (void)value;                                  \
+#define PROFILE_TYPE(Enum, Name, Type, Size)                 \
+    virtual void onProfile(Enum e, ProfileParam<Type> value) \
+    {                                                        \
+        (void)e;                                             \
+        (void)value;                                         \
     }
 
             PROFILE_TYPES
@@ -146,19 +150,19 @@ namespace easyprofile
         // ---------------------------------------------------------------------
 
     public:
-#define PROFILE_TYPE(Enum, Name, Type, Size)                         \
-    void set(Enum e, const Type& value, bool notifyListeners = true) \
-    {                                                                \
-        auto& v = m_container##Name[static_cast<size_t>(e)];         \
-        if (v != value)                                              \
-        {                                                            \
-            m_dirtyFlags |= bit(DirtyBitIndex::Name);                \
-            v = value;                                               \
-            if (notifyListeners)                                     \
-            {                                                        \
-                notify(e, value);                                    \
-            }                                                        \
-        }                                                            \
+#define PROFILE_TYPE(Enum, Name, Type, Size)                                \
+    void set(Enum e, ProfileParam<Type> value, bool notifyListeners = true) \
+    {                                                                       \
+        auto& v = m_container##Name[static_cast<size_t>(e)];                \
+        if (v != value)                                                     \
+        {                                                                   \
+            m_dirtyFlags |= bit(DirtyBitIndex::Name);                       \
+            v = value;                                                      \
+            if (notifyListeners)                                            \
+            {                                                               \
+                notify(e, value);                                           \
+            }                                                               \
+        }                                                                   \
     }
 
         PROFILE_TYPES
@@ -248,13 +252,13 @@ namespace easyprofile
         }
 
     private:
-#define PROFILE_TYPE(Enum, Name, Type, Size)     \
-    void notify(Enum e, const Type& value) const \
-    {                                            \
-        for (auto* l : m_listeners)              \
-        {                                        \
-            l->onProfile(e, value);              \
-        }                                        \
+#define PROFILE_TYPE(Enum, Name, Type, Size)            \
+    void notify(Enum e, ProfileParam<Type> value) const \
+    {                                                   \
+        for (auto* l : m_listeners)                     \
+        {                                               \
+            l->onProfile(e, value);                     \
+        }                                               \
     }
 
         PROFILE_TYPES
