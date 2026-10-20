@@ -181,17 +181,29 @@ namespace easyprofile
         // ---------------------------------------------------------------------
 
     public:
+        // Outside a batch the listeners hear a change at once, which also drops
+        // the entry from a batch still being closed: a listener answering it
+        // would otherwise be heard twice.
 #define PROFILE_TYPE(Enum, Name, Type, Size)                                \
     void set(Enum e, ProfileParam<Type> value, bool notifyListeners = true) \
     {                                                                       \
-        auto& v = m_container##Name[static_cast<size_t>(e)];                \
+        const auto idx = static_cast<size_t>(e);                            \
+        auto& v = m_container##Name[idx];                                   \
         if (v != value)                                                     \
         {                                                                   \
             m_dirtyFlags |= bit(DirtyBitIndex::Name);                       \
             v = value;                                                      \
             if (notifyListeners)                                            \
             {                                                               \
-                notify(e, value);                                           \
+                if (m_batchDepth != 0u)                                     \
+                {                                                           \
+                    m_pending##Name[idx] = true;                            \
+                }                                                           \
+                else                                                        \
+                {                                                           \
+                    m_pending##Name[idx] = false;                           \
+                    notify(e, value);                                       \
+                }                                                           \
             }                                                               \
         }                                                                   \
     }
@@ -199,6 +211,25 @@ namespace easyprofile
         PROFILE_TYPES
 
 #undef PROFILE_TYPE
+
+        // Holds the notifications back: between beginBatch() and endBatch()
+        // set() only remembers what changed, and the endBatch() that closes
+        // the outermost batch tells the listeners, each changed entry once and
+        // with its latest value. So nobody hears a profile half updated.
+        void beginBatch()
+        {
+            m_batchDepth++;
+        }
+
+        void endBatch()
+        {
+            ASSERT(m_batchDepth != 0u);
+            m_batchDepth--;
+            if (m_batchDepth == 0u)
+            {
+                notifyPending();
+            }
+        }
 
         // ---------------------------------------------------------------------
 
@@ -296,6 +327,25 @@ namespace easyprofile
 
 #undef PROFILE_TYPE
 
+        // Each entry is cleared before it is heard: a batch that a listener
+        // runs in reply hears out the rest, and must not repeat this one.
+        void notifyPending()
+        {
+#define PROFILE_TYPE(Enum, Name, Type, Size)                    \
+    for (size_t i = 0; i < Size; i++)                           \
+    {                                                           \
+        if (m_pending##Name[i])                                 \
+        {                                                       \
+            m_pending##Name[i] = false;                         \
+            notify(static_cast<Enum>(i), m_container##Name[i]); \
+        }                                                       \
+    }
+
+            PROFILE_TYPES
+
+#undef PROFILE_TYPE
+        }
+
     protected:
         explicit Profile() = default;
 
@@ -323,9 +373,18 @@ namespace easyprofile
 
     private:
         uint32_t m_dirtyFlags = 0u;
+        uint32_t m_batchDepth = 0u;
 
 #define PROFILE_TYPE(Enum, Name, Type, Size) \
     std::array<Type, Size> m_container##Name;
+
+        PROFILE_TYPES
+
+#undef PROFILE_TYPE
+
+        // Entries changed inside a batch and not heard yet.
+#define PROFILE_TYPE(Enum, Name, Type, Size) \
+    std::array<bool, Size> m_pending##Name{};
 
         PROFILE_TYPES
 

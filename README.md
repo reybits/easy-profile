@@ -157,6 +157,26 @@ public:
 };
 ```
 
+## Batch of changes
+
+Changes that belong together, such as a profile read from storage, can be heard as one. Between `beginBatch()` and `endBatch()` the listeners hear nothing; the `endBatch()` that closes the outermost batch tells them about each changed entry once, with its latest value, so none of them sees the profile half updated.
+
+```cpp
+void ReadProfile(MyProfile& myProfile)
+{
+    myProfile.beginBatch();
+    myProfile.set(U32::ValueOne, 10u);
+    myProfile.set(U32::ValueTwo, 20u);
+
+    // What was read is what is stored. Reset before endBatch(), so what the
+    // listeners change in reply stays dirty.
+    myProfile.resetDirty();
+
+    // The listeners hear ValueOne and ValueTwo here, both already in place.
+    myProfile.endBatch();
+}
+```
+
 ## Use preprocessor
 
 You can also use preprocessor to create human and debugger friendly source.

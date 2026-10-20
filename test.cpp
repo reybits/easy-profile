@@ -243,6 +243,38 @@ public:
     }
 };
 
+// Looks at ValueTwo when it hears ValueOne and answers by setting it: what it
+// sees is whole only if a batch is heard once all of it is in.
+class PairListener final : public easyprofile::Profile::Listener
+{
+public:
+    PairListener(easyprofile::Profile* profile)
+        : easyprofile::Profile::Listener(profile, "PairListener")
+    {
+    }
+
+    void onProfile(U32 e, uint32_t value)
+    {
+        auto title = ToTitle(getProfile(), getName(), e);
+        ::printf("%s = %u\n", title.c_str(), value);
+
+        if (e == U32::ValueOne)
+        {
+            heardOne++;
+            seenTwo = getProfile()->get(U32::ValueTwo);
+            getProfile()->set(U32::ValueTwo, value * 2u);
+        }
+        else
+        {
+            heardTwo++;
+        }
+    }
+
+    uint32_t heardOne = 0u;
+    uint32_t heardTwo = 0u;
+    uint32_t seenTwo = 0u;
+};
+
 // -------------------------------------------------------------------------
 // Application Entry Point
 // -------------------------------------------------------------------------
@@ -289,6 +321,26 @@ int main()
         profile.set(U32::ValueTwo, 2u);
         deferred.stop();
         profile.set(U32::ValueTwo, 3u);
+    }
+
+    {
+        Section section("* Batch: heard once all of it is in");
+        PairListener pair(&profile);
+
+        profile.beginBatch();
+        profile.set(U32::ValueOne, 100u);
+        profile.set(U32::ValueOne, 101u);
+        profile.beginBatch();
+        profile.set(U32::ValueTwo, 200u);
+        profile.endBatch();
+        ::printf("Nothing heard while the batch is open.\n");
+        ASSERT(pair.heardOne == 0u && pair.heardTwo == 0u);
+        profile.endBatch();
+
+        // ValueOne once, with its latest value and ValueTwo already in; then
+        // ValueTwo once, as the answer, and not again from the batch.
+        ASSERT(pair.heardOne == 1u && pair.seenTwo == 200u);
+        ASSERT(pair.heardTwo == 1u && profile.get(U32::ValueTwo) == 202u);
     }
 
     return 0;
