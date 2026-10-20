@@ -217,6 +217,32 @@ public:
     }
 };
 
+// Hears nothing until its owner is ready: a page, say, before its UI is built.
+class DeferredListener final : public easyprofile::Profile::Listener
+{
+public:
+    DeferredListener(easyprofile::Profile* profile)
+        : easyprofile::Profile::Listener(profile, "DeferredListener", Subscribe::Later)
+    {
+    }
+
+    void start()
+    {
+        subscribe();
+    }
+
+    void stop()
+    {
+        unsubscribe();
+    }
+
+    void onProfile(U32 e, uint32_t value)
+    {
+        auto title = ToTitle(getProfile(), getName(), e);
+        ::printf("%s = %u\n", title.c_str(), value);
+    }
+};
+
 // -------------------------------------------------------------------------
 // Application Entry Point
 // -------------------------------------------------------------------------
@@ -254,6 +280,16 @@ int main()
     }
 
     profile.dump("* Updated Values");
+
+    {
+        Section section("* Deferred Listener: hears 2 only");
+        DeferredListener deferred(&profile);
+        profile.set(U32::ValueTwo, 1u);
+        deferred.start();
+        profile.set(U32::ValueTwo, 2u);
+        deferred.stop();
+        profile.set(U32::ValueTwo, 3u);
+    }
 
     return 0;
 }

@@ -64,6 +64,15 @@ namespace easyprofile
         class Listener
         {
         public:
+            // When a listener starts hearing the profile. Most do from the
+            // moment they exist; an owner with nothing to update yet - a page
+            // before its UI is built - subscribes later, by itself.
+            enum class Subscribe
+            {
+                Now,
+                Later,
+            };
+
             virtual ~Listener()
             {
                 m_profile->unsubscribe(this);
@@ -92,11 +101,26 @@ namespace easyprofile
             }
 
         protected:
-            Listener(Profile* profile, const char* name)
+            Listener(Profile* profile, const char* name, Subscribe when = Subscribe::Now)
                 : m_profile(profile)
                 , m_name(name)
             {
+                if (when == Subscribe::Now)
+                {
+                    m_profile->subscribe(this);
+                }
+            }
+
+            // The destructor unsubscribes either way, so a listener that never
+            // subscribed, or already unsubscribed, needs nothing more.
+            void subscribe()
+            {
                 m_profile->subscribe(this);
+            }
+
+            void unsubscribe()
+            {
+                m_profile->unsubscribe(this);
             }
 
         private:
