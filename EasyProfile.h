@@ -62,7 +62,7 @@ enum class STR
 
 namespace easyprofile
 {
-    template <typename T>
+    template<typename T>
     using ProfileParam = std::conditional_t<std::is_scalar_v<T>, T, const T&>;
 
     class Profile

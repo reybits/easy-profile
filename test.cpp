@@ -75,7 +75,7 @@ public:
     }
 };
 
-template <typename Enum>
+template<typename Enum>
 std::string ToTitle(easyprofile::Profile* profile, const char* name, Enum e)
 {
     std::string title = name;
