@@ -89,13 +89,13 @@ public:
     {
     }
 
-    void onProfile(BOOL e, const bool& value) override
+    void onProfile(BOOL e, bool value) override
     {
         auto title = std::string(getName()) + ": ";
         ::printf("%s = %s\n", title.c_str(), value ? "true" : "false");
     }
 
-    void onProfile(U32 e, const uint32_t& value) override
+    void onProfile(U32 e, uint32_t value) override
     {
         auto title = std::string(getName()) + ": ";
         ::printf("%s = %u\n", title.c_str(), value);
@@ -129,6 +129,32 @@ void InitilizeProfile()
     std::println("U32 ValueTwo: {}", myProfile.get(U32::ValueTwo));
     std::println("STR ValueOne: {}", myProfile.get(STR::ValueOne));
 }
+```
+
+## Subscribing later
+
+A listener that has nothing to update yet, such as a screen before its UI is built, starts hearing the profile when it is ready.
+
+```cpp
+class ScreenListener final : public easyprofile::Profile::Listener
+{
+public:
+    ScreenListener(easyprofile::Profile* profile)
+        : easyprofile::Profile::Listener(profile, "ScreenListener", Subscribe::Later)
+    {
+    }
+
+    void show()
+    {
+        // Build the UI first, then hear the changes.
+        subscribe();
+    }
+
+    void hide()
+    {
+        unsubscribe();
+    }
+};
 ```
 
 ## Use preprocessor
