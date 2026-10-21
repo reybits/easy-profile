@@ -157,6 +157,8 @@ public:
 };
 ```
 
+A handler may subscribe or unsubscribe any listener, itself included: one that leaves is not called again, and one that comes hears the next change, not the one being told.
+
 ## Batch of changes
 
 Changes that belong together, such as a profile read from storage, can be heard as one. Between `beginBatch()` and `endBatch()` the listeners hear nothing; the `endBatch()` that closes the outermost batch tells them about each changed entry once, with its latest value, so none of them sees the profile half updated.

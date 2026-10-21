@@ -240,7 +240,34 @@ public:
     {
         auto title = ToTitle(getProfile(), getName(), e);
         ::printf("%s = %u\n", title.c_str(), value);
+        heard++;
     }
+
+    uint32_t heard = 0u;
+};
+
+// Rearranges the listeners when it hears a change: one leaves, one comes, and
+// it leaves itself.
+class RearrangingListener final : public easyprofile::Profile::Listener
+{
+public:
+    RearrangingListener(easyprofile::Profile* profile, DeferredListener* leaving, DeferredListener* coming)
+        : easyprofile::Profile::Listener(profile, "RearrangingListener")
+        , m_leaving(leaving)
+        , m_coming(coming)
+    {
+    }
+
+    void onProfile(U32 /*e*/, uint32_t /*value*/)
+    {
+        m_leaving->stop();
+        m_coming->start();
+        unsubscribe();
+    }
+
+private:
+    DeferredListener* m_leaving;
+    DeferredListener* m_coming;
 };
 
 // Looks at ValueTwo when it hears ValueOne and answers by setting it: what it
@@ -341,6 +368,22 @@ int main()
         // ValueTwo once, as the answer, and not again from the batch.
         ASSERT(pair.heardOne == 1u && pair.seenTwo == 200u);
         ASSERT(pair.heardTwo == 1u && profile.get(U32::ValueTwo) == 202u);
+    }
+
+    {
+        Section section("* Listeners come and go while one is heard");
+        DeferredListener leaving(&profile);
+        DeferredListener coming(&profile);
+        RearrangingListener rearranging(&profile, &leaving, &coming);
+        leaving.start();
+
+        // Leaving comes after rearranging, so it is skipped once it has gone;
+        // coming hears the next change, not this one.
+        profile.set(U32::ValueOne, 1u);
+        ASSERT(leaving.heard == 0u && coming.heard == 0u);
+
+        profile.set(U32::ValueOne, 2u);
+        ASSERT(leaving.heard == 0u && coming.heard == 1u);
     }
 
     return 0;

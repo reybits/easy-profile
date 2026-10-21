@@ -283,7 +283,7 @@ namespace easyprofile
             ASSERT(it == m_listeners.end());
 #endif
             m_listeners.push_back(listener);
-            logListenerAdded(listener, m_listeners.size());
+            logListenerAdded(listener, countListeners());
         }
 
         void unsubscribe(Listener* listener)
@@ -291,9 +291,22 @@ namespace easyprofile
             auto it = std::find(m_listeners.begin(), m_listeners.end(), listener);
             if (it != m_listeners.end())
             {
-                m_listeners.erase(it);
-                logListenerRemoved(listener, m_listeners.size());
+                if (m_notifyDepth != 0u)
+                {
+                    *it = nullptr;
+                }
+                else
+                {
+                    m_listeners.erase(it);
+                }
+                logListenerRemoved(listener, countListeners());
             }
+        }
+
+        // Slots emptied while a notification is under way are not listeners.
+        size_t countListeners() const
+        {
+            return m_listeners.size() - static_cast<size_t>(std::count(m_listeners.begin(), m_listeners.end(), nullptr));
         }
 
     protected:
@@ -314,18 +327,42 @@ namespace easyprofile
         }
 
     private:
-#define PROFILE_TYPE(Enum, Name, Type, Size)            \
-    void notify(Enum e, ProfileParam<Type> value) const \
-    {                                                   \
-        for (auto* l : m_listeners)                     \
-        {                                               \
-            l->onProfile(e, value);                     \
-        }                                               \
+#define PROFILE_TYPE(Enum, Name, Type, Size)      \
+    void notify(Enum e, ProfileParam<Type> value) \
+    {                                             \
+        forEachListener([&](Listener* listener) { \
+            listener->onProfile(e, value);        \
+        });                                       \
     }
 
         PROFILE_TYPES
 
 #undef PROFILE_TYPE
+
+        // A handler may subscribe or unsubscribe a listener, itself included.
+        // One that leaves is skipped from then on: its slot is only emptied, so
+        // the walk keeps its place, and it is erased when the outermost walk
+        // ends. One that comes hears the next change, not this one.
+        template<typename Call>
+        void forEachListener(Call call)
+        {
+            m_notifyDepth++;
+            const auto count = m_listeners.size();
+            for (size_t i = 0; i < count; i++)
+            {
+                auto* listener = m_listeners[i];
+                if (listener != nullptr)
+                {
+                    call(listener);
+                }
+            }
+            m_notifyDepth--;
+
+            if (m_notifyDepth == 0u)
+            {
+                m_listeners.erase(std::remove(m_listeners.begin(), m_listeners.end(), nullptr), m_listeners.end());
+            }
+        }
 
         // Each entry is cleared before it is heard: a batch that a listener
         // runs in reply hears out the rest, and must not repeat this one.
@@ -392,6 +429,7 @@ namespace easyprofile
 
     private:
         std::vector<Listener*> m_listeners;
+        uint32_t m_notifyDepth = 0u;
     };
 
 } // namespace easyprofile
