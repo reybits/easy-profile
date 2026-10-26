@@ -212,10 +212,35 @@ namespace easyprofile
 
 #undef PROFILE_TYPE
 
-        // Holds the notifications back: between beginBatch() and endBatch()
-        // set() only remembers what changed, and the endBatch() that closes
-        // the outermost batch tells the listeners, each changed entry once and
-        // with its latest value. So nobody hears a profile half updated.
+        // Holds the notifications back: while a batch lives set() only
+        // remembers what changed, and the end of the outermost one tells the
+        // listeners, each changed entry once and with its latest value. So
+        // nobody hears a profile half updated. A scope rather than a pair of
+        // calls, because a batch left open silences the listeners for the rest
+        // of the session. Batches nest: an inner scope tells nobody anything.
+        class Batch final
+        {
+        public:
+            explicit Batch(Profile* profile)
+                : m_profile(profile)
+            {
+                m_profile->beginBatch();
+            }
+
+            ~Batch()
+            {
+                m_profile->endBatch();
+            }
+
+        private:
+            Batch(const Batch&) = delete;
+            Batch& operator=(const Batch&) = delete;
+
+        private:
+            Profile* m_profile;
+        };
+
+    private:
         void beginBatch()
         {
             m_batchDepth++;

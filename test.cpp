@@ -354,20 +354,45 @@ int main()
         Section section("* Batch: heard once all of it is in");
         PairListener pair(&profile);
 
-        profile.beginBatch();
-        profile.set(U32::ValueOne, 100u);
-        profile.set(U32::ValueOne, 101u);
-        profile.beginBatch();
-        profile.set(U32::ValueTwo, 200u);
-        profile.endBatch();
-        ::printf("Nothing heard while the batch is open.\n");
-        ASSERT(pair.heardOne == 0u && pair.heardTwo == 0u);
-        profile.endBatch();
+        {
+            easyprofile::Profile::Batch batch(&profile);
+            profile.set(U32::ValueOne, 100u);
+            profile.set(U32::ValueOne, 101u);
+            {
+                easyprofile::Profile::Batch nested(&profile);
+                profile.set(U32::ValueTwo, 200u);
+            }
+            ::printf("Nothing heard while the batch is open.\n");
+            ASSERT(pair.heardOne == 0u && pair.heardTwo == 0u);
+        }
 
         // ValueOne once, with its latest value and ValueTwo already in; then
         // ValueTwo once, as the answer, and not again from the batch.
         ASSERT(pair.heardOne == 1u && pair.seenTwo == 200u);
         ASSERT(pair.heardTwo == 1u && profile.get(U32::ValueTwo) == 202u);
+    }
+
+    {
+        Section section("* Batch: a scope ends it on every way out");
+        PairListener pair(&profile);
+
+        auto readProfile = [&profile](bool hasNoMore) {
+            easyprofile::Profile::Batch batch(&profile);
+
+            profile.set(U32::ValueOne, 300u);
+            if (hasNoMore)
+            {
+                return;
+            }
+
+            profile.set(U32::ValueOne, 301u);
+        };
+
+        readProfile(true);
+        ASSERT(pair.heardOne == 1u && profile.get(U32::ValueOne) == 300u);
+
+        readProfile(false);
+        ASSERT(pair.heardOne == 2u && profile.get(U32::ValueOne) == 301u);
     }
 
     {

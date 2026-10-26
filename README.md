@@ -161,23 +161,29 @@ A handler may subscribe or unsubscribe any listener, itself included: one that l
 
 ## Batch of changes
 
-Changes that belong together, such as a profile read from storage, can be heard as one. Between `beginBatch()` and `endBatch()` the listeners hear nothing; the `endBatch()` that closes the outermost batch tells them about each changed entry once, with its latest value, so none of them sees the profile half updated.
+Changes that belong together, such as a profile read from storage, can be heard as one. While a `Batch` lives the listeners hear nothing; its end tells them about each changed entry once, with its latest value, so none of them sees the profile half updated. A scope and not a pair of calls, because a batch left open silences the listeners for the rest of the session - which is also why `beginBatch()` and `endBatch()` are not public.
 
 ```cpp
-void ReadProfile(MyProfile& myProfile)
+void ReadProfile(MyProfile& myProfile, const Storage& storage)
 {
-    myProfile.beginBatch();
-    myProfile.set(U32::ValueOne, 10u);
-    myProfile.set(U32::ValueTwo, 20u);
+    easyprofile::Profile::Batch batch(&myProfile);
 
-    // What was read is what is stored. Reset before endBatch(), so what the
-    // listeners change in reply stays dirty.
+    myProfile.set(U32::ValueOne, storage.one);
+    if (storage.hasNoMore)
+    {
+        // The listeners hear ValueOne here, as they would at the end.
+        return;
+    }
+
+    myProfile.set(U32::ValueTwo, storage.two);
+
+    // What was read is what is stored. Reset while the batch is open, so what
+    // the listeners change in reply stays dirty.
     myProfile.resetDirty();
-
-    // The listeners hear ValueOne and ValueTwo here, both already in place.
-    myProfile.endBatch();
 }
 ```
+
+Batches nest: an inner scope tells nobody anything, and the outermost one does the telling.
 
 ## Use preprocessor
 
