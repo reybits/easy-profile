@@ -36,8 +36,8 @@ enum class STR
 // The single source of the version. Games carry copies of this header, so a
 // game that needs a feature can demand it: #if EASYPROFILE_VERSION < 10100.
 #define EASYPROFILE_VERSION_MAJOR 1
-#define EASYPROFILE_VERSION_MINOR 2
-#define EASYPROFILE_VERSION_PATCH 1
+#define EASYPROFILE_VERSION_MINOR 3
+#define EASYPROFILE_VERSION_PATCH 0
 #define EASYPROFILE_VERSION ((EASYPROFILE_VERSION_MAJOR * 10000) + (EASYPROFILE_VERSION_MINOR * 100) + (EASYPROFILE_VERSION_PATCH))
 
 #include <algorithm>
